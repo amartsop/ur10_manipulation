@@ -8,6 +8,7 @@
 #include "actionlib/client/simple_action_client.h"
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_model/robot_model.h>
+#include "path_id.h"
 #include "angle_conversion.h"
 
 
@@ -30,18 +31,13 @@ class RobotControl
         void goto_cartesian_position(double t, const vecd& pos, const vecd& euler,
         TrajClient& traj_client);
 
-
-
-
-
     public:
-        // Go to joint position
-        void goto_joint_position(double t, const vecd& pos, const vecd& vel,
-            const vecd& accel, TrajClient& traj_client);
+        // Go to joint position (one point)
+        void goto_joint_position(const PathID::Joint& joint_state,
+            TrajClient& traj_client);
 
-        // Go to joint position
-        void goto_joint_position(vecd t, const std::vector<vecd>& pos,
-            const std::vector<vecd>& vel, const std::vector<vecd>& accel,
+        // Go to joint positions (multiple points)
+        void goto_joint_position(const std::vector<PathID::Joint>& joint_state,
             TrajClient& traj_client);
         
     public:
@@ -69,9 +65,16 @@ class RobotControl
 
     private:
         // Initialize robot 
-        const std::vector<double> m_init_pos = {0.0, -1.7279, -1.7279,
+        const std::vector<double> m_init_pos = {1.5, -1.7279, -1.7279,
             0.0, 1.57, 0.0};
         vecd m_init_vel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         vecd m_init_accel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         double m_t_init = 3.0;
+
+    private:
+        // Set joint state goal (one point)
+        fktg set_joint_state_goal(const PathID::Joint& joint_state);
+
+        // Set joint state goal (multiple points)
+        fktg set_joint_state_goal(const std::vector<PathID::Joint>& joint_state);
 };

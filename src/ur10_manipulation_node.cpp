@@ -7,6 +7,7 @@
 
 #include "../include/robot_control.h"
 #include "../include/path_planning.h"
+#include "../include/path_id.h"
 
 
 typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
@@ -38,17 +39,35 @@ int main(int argc, char** argv)
     RobotControl robot_control(kinematic_model, traj_client);
 
 
-    PathPlanning path_planning(robot_control.get_ee_position(),
-        robot_control.get_ee_orientation());
+    // PathPlanning path_planning(robot_control.get_ee_position(),
+    //     robot_control.get_ee_orientation());
 
-    auto pos_vec = path_planning.get_position_vector();
-    auto eul_vec = path_planning.get_euler_vector();
-
-
-    robot_control.goto_cartesian_position(0.5, pos_vec.at(150), eul_vec.at(150),
-        traj_client);
+    // auto pos_vec = path_planning.get_position_vector();
+    // auto eul_vec = path_planning.get_euler_vector();
 
 
+    // robot_control.goto_cartesian_position(0.5, pos_vec.at(150), eul_vec.at(150),
+    //     traj_client);
+
+
+    PathID::Joint path;
+    path.time = 0.5;
+    path.position = {0.0, -1.7279, -1.9279, 0.0, 1.57, 0.0};
+    path.velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    path.acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+
+    // robot_control.goto_joint_position(path, traj_client);
+
+
+    // const std::vector<double> m_init_pos = {0.0, -1.7279, -1.7279,
+    //     0.0, 3.14, 0.0};
+    // vecd m_init_vel = 
+    // vecd m_init_accel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+
+    // robot_control.goto_joint_position(0.5, m_init_pos, m_init_vel, m_init_accel,
+    //     traj_client);
 
 
     ros::shutdown();

@@ -1,6 +1,6 @@
 #include "../include/path_planning.h"
 
-PathPlanning::PathPlanning(const vecd& pos, const vecd& eul)
+PathPlanning::PathPlanning(const vecd& cur_pos, const vecd& cur_eul)
 {
     // Calculate number of trajectory points
     m_pnum = (unsigned int)((m_tf - m_t0) * m_fs);
@@ -13,7 +13,7 @@ PathPlanning::PathPlanning(const vecd& pos, const vecd& eul)
     m_pos.resize(m_pnum); m_eul.resize(m_pnum);
 
     // Generate trajectory
-    generate_trajectory(pos, eul);
+    generate_trajectory(cur_pos, cur_eul);
 }
 
 

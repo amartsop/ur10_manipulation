@@ -11,8 +11,14 @@ typedef std::vector<double> vecd;
 class PathPlanning
 {
     public:
-        PathPlanning(const vecd& pos, const vecd& eul);
+        PathPlanning(const vecd& cur_pos, const vecd& cur_eul);
         
+        // 
+        struct Quaternions { double w, x, y, z; };
+
+        // Eulear angles struct
+        struct Euler{ double phi, theta, psi; };
+
         // Get time vector
         vecd get_time_vector(void) { return m_time; }
 
@@ -40,7 +46,7 @@ class PathPlanning
         std::vector<vecd> m_pos, m_eul;
 
         // Generate trajectory
-        void generate_trajectory(const vecd& pos, const vecd& eul);
+        void generate_trajectory(const vecd& cur_pos, const vecd& cur_eul);
 };
 
 

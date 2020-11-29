@@ -22,7 +22,8 @@ set(PROJ_SOURCE_FILES
   src/angle_conversion.cpp
   src/input_trajectory.cpp
   src/robot_control.cpp
-  src/path_planning.cpp)
+  src/path_planning.cpp
+  src/path_id.cpp)
 
 # Directories variable
 set(PROJ_INCL_DIRS include include/ur10_manipulation

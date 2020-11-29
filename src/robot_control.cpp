@@ -15,8 +15,13 @@ RobotControl::RobotControl(robot_model::RobotModelPtr kinematic_model,
     m_link_names = m_joint_model_group->getLinkModelNames();
 
     // Initialize robot
-    goto_joint_position(m_t_init, m_init_pos, m_init_vel, m_init_accel,
-        traj_client);    
+    PathID::Joint init_path;
+    init_path.time = m_t_init;
+    init_path.position = m_init_pos;
+    init_path.velocity = m_init_vel;
+    init_path.acceleration = m_init_accel;
+    goto_joint_position(init_path, traj_client);
+
 }
 
 void RobotControl::goto_cartesian_position(double t, const vecd& pos,
@@ -61,37 +66,16 @@ void RobotControl::goto_cartesian_position(double t, const vecd& pos,
     }
 
 
-    goto_joint_position(t, joint_values, m_init_vel, m_init_accel, traj_client);
+    // goto_joint_position(t, joint_values, m_init_vel, m_init_accel, traj_client);
 }
 
 
-
-// Go to joint position
-void RobotControl::goto_joint_position(double t, const vecd& pos,
-    const vecd& vel, const vecd& accel, TrajClient& traj_client)
+// Go to joint position (one point)
+void RobotControl::goto_joint_position(const PathID::Joint& joint_state,
+    TrajClient& traj_client)
 {
-    // Create goal object 
-    fktg goal;
-
-    // Robot Initialization routine
-    goal.trajectory.joint_names = m_joint_names;
-
-    goal.trajectory.points.resize(1);
-
-    // Set position
-    goal.trajectory.points[0].positions = pos;
-    m_kinematic_state->setJointGroupPositions(m_joint_model_group, pos);
-
-    // Set velocity
-    goal.trajectory.points[0].velocities = vel;
-    m_kinematic_state->setJointGroupVelocities(m_joint_model_group, vel);
-
-    // Set acceleration
-    goal.trajectory.points[0].accelerations = accel;
-    m_kinematic_state->setJointGroupAccelerations(m_joint_model_group, accel);
-
-    // Set time from start
-    goal.trajectory.points[0].time_from_start = ros::Duration(t);
+    // Create goal 
+    fktg goal = set_joint_state_goal(joint_state);
 
     // Send goal to client
     traj_client.sendGoal(goal);
@@ -102,39 +86,15 @@ void RobotControl::goto_joint_position(double t, const vecd& pos,
     }
 }
 
-// Go to joint position
-void RobotControl::goto_joint_position(vecd t, const std::vector<vecd>& pos,
-    const std::vector<vecd>& vel, const std::vector<vecd>& accel,
-    TrajClient& traj_client)
+
+// Go to joint positions (multiple points)
+void RobotControl::goto_joint_position(const std::vector<PathID::Joint>&
+    joint_state, TrajClient& traj_client)
 {
-    // Create goal object 
-    fktg goal;
+    // Create goal 
+    fktg goal = set_joint_state_goal(joint_state);
 
-    // Resize goal number
-    goal.trajectory.points.resize(t.size());
-
-    // Set joint names
-    goal.trajectory.joint_names = m_joint_names;
-
-    for(size_t i = 0; i < t.size(); i++)
-    {
-        // Set position
-        goal.trajectory.points[i].positions = pos.at(i);
-        m_kinematic_state->setJointGroupPositions(m_joint_model_group, pos.at(i));
-
-        // Set velocity
-        goal.trajectory.points[i].velocities = vel.at(i);
-        m_kinematic_state->setJointGroupVelocities(m_joint_model_group, vel.at(i));
-
-        // Set acceleration
-        goal.trajectory.points[i].accelerations = accel.at(i);
-        m_kinematic_state->setJointGroupAccelerations(m_joint_model_group,
-            accel.at(i));
-
-        // Set time from start
-        goal.trajectory.points[i].time_from_start = ros::Duration(t.at(i));
-    }
-
+    // Send goal to client
     traj_client.sendGoal(goal);
 
     while (!traj_client.getState().isDone())
@@ -142,6 +102,7 @@ void RobotControl::goto_joint_position(vecd t, const std::vector<vecd>& pos,
         ros::spinOnce();
     }
 }
+
 
 // Get end effector position
 vecd RobotControl::get_ee_position(void)
@@ -181,17 +142,89 @@ vecd RobotControl::get_ee_orientation(void)
     return eul_vec;
 }
 
+
 // Get joint angles values
 vecd RobotControl::get_joint_angles(void)
 {
     std::vector<double> joint_values;
-
     m_kinematic_state->copyJointGroupPositions(m_joint_model_group, joint_values);
-
     return joint_values;
 }
 
 
+// Set joint state goal (one point)
+fktg RobotControl::set_joint_state_goal(const PathID::Joint& joint_state)
+{
+    // Create goal object 
+    fktg goal;
+
+    // Robot Initialization routine
+    goal.trajectory.joint_names = m_joint_names;
+
+    goal.trajectory.points.resize(1);
+
+    // Set position
+    goal.trajectory.points[0].positions = joint_state.position;
+    m_kinematic_state->setJointGroupPositions(m_joint_model_group,
+        joint_state.position);
+
+    // Set velocity
+    goal.trajectory.points[0].velocities = joint_state.velocity;
+    m_kinematic_state->setJointGroupVelocities(m_joint_model_group,
+        joint_state.velocity);
+
+    // Set acceleration
+    goal.trajectory.points[0].accelerations = joint_state.acceleration;
+    m_kinematic_state->setJointGroupAccelerations(m_joint_model_group,
+        joint_state.acceleration);
+
+    // Set time from start
+    goal.trajectory.points[0].time_from_start = ros::Duration(joint_state.time);
+
+    return goal;
+}
+
+
+// Set joint state goal (multiple points)
+fktg RobotControl::set_joint_state_goal(const std::vector<PathID::Joint>&
+    joint_state)
+{
+    // Create goal object 
+    fktg goal;
+
+    // Resize goal number
+    goal.trajectory.points.resize(joint_state.size());
+
+    // Set joint names
+    goal.trajectory.joint_names = m_joint_names;
+
+    for(size_t i = 0; i < joint_state.size(); i++)
+    {
+        // Set position
+        goal.trajectory.points[i].positions = joint_state.at(i).position;
+        m_kinematic_state->setJointGroupPositions(m_joint_model_group,
+            joint_state.at(i).position);
+
+        // Set velocity
+        goal.trajectory.points[i].velocities = joint_state.at(i).velocity;
+        m_kinematic_state->setJointGroupVelocities(m_joint_model_group,
+            joint_state.at(i).velocity);
+
+        // Set acceleration
+        goal.trajectory.points[i].accelerations = joint_state.at(i).acceleration;
+        m_kinematic_state->setJointGroupAccelerations(m_joint_model_group,
+            joint_state.at(i).acceleration);
+
+        // Set time from start
+        goal.trajectory.points[i].time_from_start =
+            ros::Duration(joint_state.at(i).time);
+    }
+
+    return goal;
+}
+
+
+// Destructor
 RobotControl::~RobotControl()
 {
     delete m_kinematic_state;

@@ -12,13 +12,13 @@ class PathID
 
         // Cartesian space path struct
         struct Cartesian {
-            double time;
-            double position[3];
-            double velocity[3];
-            double acceleration[3];
-            double euler_position[3];
-            double euler_velocity[3];
-            double euler_acceleration[3];
+            double time = 0.0;
+            std::vector<double> position = {0.0, 0.0, 0.0};
+            std::vector<double> velocity = {0.0, 0.0, 0.0};
+            std::vector<double> acceleration = {0.0, 0.0, 0.0};
+            std::vector<double> euler_position = {0.0, 0.0, 0.0};
+            std::vector<double> euler_velocity = {0.0, 0.0, 0.0};
+            std::vector<double> euler_acceleration = {0.0, 0.0, 0.0};
         };
 
 

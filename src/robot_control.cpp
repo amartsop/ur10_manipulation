@@ -21,53 +21,146 @@ RobotControl::RobotControl(robot_model::RobotModelPtr kinematic_model,
     init_path.velocity = m_init_vel;
     init_path.acceleration = m_init_accel;
     goto_joint_position(init_path, traj_client);
-
 }
 
-void RobotControl::goto_cartesian_position(double t, const vecd& pos,
-    const vecd& euler, TrajClient& traj_client)
+
+// Go to cartesian position (multiple points)
+void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
+    cartesian_state, TrajClient& traj_client)
 {
+    // Valid solution
+    bool valid_solution = true;
+
+    // Create joint object 
+    std::vector<PathID::Joint> joint_angles(cartesian_state.size());
+
+    // Generate joint trajectory
+    for (size_t i = 0; i < cartesian_state.size(); i++)
+    {
+        // Geometry message
+        geometry_msgs::Pose cart_pose;
+
+        // Set position
+        cart_pose.position.x = cartesian_state[i].position[0];
+        cart_pose.position.y = cartesian_state[i].position[1];
+        cart_pose.position.z = cartesian_state[i].position[2];
+
+
+        // Set orientation
+        double phi = cartesian_state[i].euler_position[0];
+        double theta = cartesian_state[i].euler_position[1];
+        double psi = cartesian_state[i].euler_position[2];
+
+        AngleConversion::Quaternions quatern =
+            AngleConversion::euler_to_quaternions(phi, theta, psi);
+
+        cart_pose.orientation.w = quatern.w;
+        cart_pose.orientation.x = quatern.x;
+        cart_pose.orientation.y = quatern.y;
+        cart_pose.orientation.z = quatern.z;
+
+        // Joint values in Joint format
+        joint_angles[i].time = cartesian_state[i].time;
+
+
+        // Solve inerse kinematics
+        bool found_ik = m_kinematic_state->setFromIK(m_joint_model_group,
+            cart_pose, 10, 0.2);
+
+        // Now, we can print out the IK solution (if found):
+        if (found_ik)
+        {
+            // Set joint positions
+            m_kinematic_state->copyJointGroupPositions(m_joint_model_group,
+                joint_angles[i].position);
+
+            // Set joint velocities (CHANGE)
+            joint_angles[i].velocity.resize(joint_angles[i].position.size());
+            std::fill(joint_angles[i].velocity.begin(),
+                joint_angles[i].velocity.end(), 0.0);
+
+            // Set joint acceleration (CHANGE)
+            joint_angles[i].acceleration.resize(joint_angles[i].position.size());
+            std::fill(joint_angles[i].acceleration.begin(),
+                joint_angles[i].acceleration.end(), 0.0);
+
+            std::cout << i << " out of: " << joint_angles.size() << std::endl;
+        }
+        else
+        {
+            valid_solution = false;
+            break;
+        }
+    }
+
+    if(valid_solution)
+    {
+        ROS_INFO("Path found! Generating position...");
+        goto_joint_position(joint_angles, traj_client);
+    }
+    else
+    {
+        ROS_INFO("Inverse kinematics failed!");
+    }
+}
+
+
+// Go to cartesian position
+void RobotControl::goto_cartesian_position(const PathID::Cartesian&
+    cartesian_state, TrajClient& traj_client)
+{
+    // Geometry message
     geometry_msgs::Pose cart_pose;
 
     // Set position
-    cart_pose.position.x = pos.at(0);
-    cart_pose.position.y = pos.at(1);
-    cart_pose.position.z = pos.at(2);
+    cart_pose.position.x = cartesian_state.position[0];
+    cart_pose.position.y = cartesian_state.position[1];
+    cart_pose.position.z = cartesian_state.position[2];
 
     // Set orientation
     AngleConversion::Quaternions quatern =
-        AngleConversion::euler_to_quaternions(euler.at(0), euler.at(1),
-        euler.at(2));
+        AngleConversion::euler_to_quaternions(cartesian_state.euler_position[0], 
+            cartesian_state.euler_position[1], cartesian_state.euler_position[2]);
 
     cart_pose.orientation.w = quatern.w;
     cart_pose.orientation.x = quatern.x;
     cart_pose.orientation.y = quatern.y;
     cart_pose.orientation.z = quatern.z;
 
-
+    // Joint values in Joint format
+    PathID::Joint joints_values;
+    joints_values.time = cartesian_state.time;
+    
+    // Solve inverse kinematics
     bool found_ik = m_kinematic_state->setFromIK(m_joint_model_group,
-        cart_pose, 10, 0.1);
-
-    vecd joint_values;
+        cart_pose, 0.2);
 
     // Now, we can print out the IK solution (if found):
     if (found_ik)
     {
-        m_kinematic_state->copyJointGroupPositions(m_joint_model_group, joint_values);
+        // Set joint positions
+        m_kinematic_state->copyJointGroupPositions(m_joint_model_group,
+            joints_values.position);
+        
+        // Set joint velocities (CHANGE)
+        joints_values.velocity.resize(joints_values.position.size());
+        std::fill(joints_values.velocity.begin(),
+            joints_values.velocity.end(), 0.0);
 
-        for(std::size_t i=0; i < m_joint_names.size(); ++i)
-        {
-        ROS_INFO("Joint %s: %f", m_joint_names[i].c_str(), joint_values[i]);
-        }
+        // Set joint acceleration (CHANGE)
+        joints_values.acceleration.resize(joints_values.position.size());
+        std::fill(joints_values.acceleration.begin(),
+            joints_values.acceleration.end(), 0.0);
+
+        // Go to joint position
+        goto_joint_position(joints_values, traj_client);
     }
     else
     {
         ROS_INFO("Did not find IK solution");
     }
-
-
-    // goto_joint_position(t, joint_values, m_init_vel, m_init_accel, traj_client);
 }
+
 
 
 // Go to joint position (one point)
@@ -105,7 +198,7 @@ void RobotControl::goto_joint_position(const std::vector<PathID::Joint>&
 
 
 // Get end effector position
-vecd RobotControl::get_ee_position(void)
+std::vector<double> RobotControl::get_ee_position(void)
 {
     const Eigen::Affine3d &end_effector_state =
         m_kinematic_state->getGlobalLinkTransform(m_link_names.back());
@@ -113,7 +206,7 @@ vecd RobotControl::get_ee_position(void)
     Eigen::Vector3d pos = end_effector_state.translation();
 
     // Position
-    vecd pos_vec(3);
+    std::vector<double> pos_vec(3);
     pos_vec.at(0) = pos(0); pos_vec.at(1) = pos(1); pos_vec.at(2) = pos(2);
     
     // Return position
@@ -122,7 +215,7 @@ vecd RobotControl::get_ee_position(void)
 
 
 // Get end effector orientation, euler angles phi, theta, psi (z, y', x'')
-vecd RobotControl::get_ee_orientation(void)
+std::vector<double> RobotControl::get_ee_orientation(void)
 {
     const Eigen::Affine3d &end_effector_state =
         m_kinematic_state->getGlobalLinkTransform(m_link_names.back());
@@ -135,7 +228,7 @@ vecd RobotControl::get_ee_orientation(void)
         AngleConversion::quaternions_to_euler(quatern.w(), quatern.x(),
         quatern.y(), quatern.z());
 
-    vecd eul_vec(3);
+    std::vector<double> eul_vec(3);
     eul_vec.at(0) = eul.phi; eul_vec.at(1) = eul.theta; eul_vec.at(2) = eul.psi;
 
     // Return orientation
@@ -143,8 +236,32 @@ vecd RobotControl::get_ee_orientation(void)
 }
 
 
+// Get end-effector pose
+PathID::Cartesian RobotControl::get_ee_pose(void)
+{
+    // Get end-effector position
+    std::vector<double> lin_pos = get_ee_position();
+
+    // Get end-effector orientation
+    std::vector<double> euler = get_ee_orientation();
+
+    // Cartesian pose 
+    PathID::Cartesian pose;
+
+    // Set position
+    pose.position = lin_pos;
+
+    // Set orientation
+    pose.euler_position = euler;
+
+    // DEBUG -> Should find a way of changing velocities and acceleration
+    return pose;
+}
+
+
+
 // Get joint angles values
-vecd RobotControl::get_joint_angles(void)
+std::vector<double> RobotControl::get_joint_angles(void)
 {
     std::vector<double> joint_values;
     m_kinematic_state->copyJointGroupPositions(m_joint_model_group, joint_values);

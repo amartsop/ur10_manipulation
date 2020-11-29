@@ -16,8 +16,6 @@ typedef control_msgs::FollowJointTrajectoryGoal fktg;
 typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
     TrajClient;
 
-typedef std::vector<double> vecd;
-
 
 class RobotControl
 {
@@ -27,9 +25,14 @@ class RobotControl
         ~RobotControl();
 
     public:
-        // Go to cartesian position
-        void goto_cartesian_position(double t, const vecd& pos, const vecd& euler,
-        TrajClient& traj_client);
+        // Go to cartesian position (one point)
+        void goto_cartesian_position(const PathID::Cartesian& cartesian_state,
+            TrajClient& traj_client);
+
+        // Go to cartesian position (multiple points)
+        void goto_cartesian_position(const std::vector<PathID::Cartesian>&
+            cartesian_state, TrajClient& traj_client);
+
 
     public:
         // Go to joint position (one point)
@@ -42,13 +45,16 @@ class RobotControl
         
     public:
         // Get end effector position (m)
-        vecd get_ee_position(void);
+        std::vector<double> get_ee_position(void);
 
         // Get end effector orientation, euler angles phi, theta, psi (z, y', x'')
-        vecd get_ee_orientation(void);
+        std::vector<double> get_ee_orientation(void);
+
+        // Get end-effector pose
+        PathID::Cartesian get_ee_pose(void);
 
         // Get joint angles values
-        vecd get_joint_angles(void);
+        std::vector<double> get_joint_angles(void);
 
     private:
         // Joint names
@@ -65,10 +71,10 @@ class RobotControl
 
     private:
         // Initialize robot 
-        const std::vector<double> m_init_pos = {1.5, -1.7279, -1.7279,
+        const std::vector<double> m_init_pos = {0.0, -1.7279, -1.7279,
             0.0, 1.57, 0.0};
-        vecd m_init_vel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        vecd m_init_accel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        std::vector<double> m_init_vel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        std::vector<double> m_init_accel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         double m_t_init = 3.0;
 
     private:

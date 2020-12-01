@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     spinner.start();
 
     // Create follow joint trajectroy action
-    std::string traj_client_name = "arm_controller/follow_joint_trajectory";
+    std::string traj_client_name = "/follow_joint_trajectory";
     TrajClient traj_client(traj_client_name, true);
 
     while(!traj_client.waitForServer(ros::Duration(5.0)))
@@ -47,6 +47,7 @@ int main(int argc, char** argv)
 
 
     robot_control.goto_cartesian_position(cart_path, traj_client);
+
 
     ros::shutdown();
     return 0;

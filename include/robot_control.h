@@ -8,8 +8,9 @@
 #include "actionlib/client/simple_action_client.h"
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_model/robot_model.h>
+
 #include "path_id.h"
-#include "angle_conversion.h"
+#include "euler_rotations.h"
 
 
 typedef control_msgs::FollowJointTrajectoryGoal fktg;

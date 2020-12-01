@@ -17,10 +17,7 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #******************** Build ***********************#
 # Source files variable
 set(PROJ_SOURCE_FILES
-  src/joint_control.cpp
-  src/trajectory_design.cpp
-  src/angle_conversion.cpp
-  src/input_trajectory.cpp
+  src/euler_rotations.cpp
   src/robot_control.cpp
   src/path_planning.cpp
   src/path_id.cpp)

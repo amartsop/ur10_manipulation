@@ -16,10 +16,10 @@ std::vector<PathID::Cartesian> PathPlanning::generate_trajectory(const
 
     // /******************* Position *******************/
     // Position amplitude (m)
-    double a_p[3] = {0.2, 0.2, 0.2};
+    double a_p[3] = {0.1, 0.1, 0.2};
 
     // Position frequency (Hz)
-    double f_p[3] = {1.0, 1.0, 1.0};
+    double f_p[3] = {0.5, 0.5, 0.5};
 
     // Position phase (rad)
     double phi_p[3] = {0.0, 0.0, 0.0};
@@ -29,7 +29,7 @@ std::vector<PathID::Cartesian> PathPlanning::generate_trajectory(const
     double a_o[3] = {0.5, 0.5, 0.5};
 
     // Euler angles frequency (Hz)
-    double f_o[3] = {1.0, 1.0, 1.0};
+    double f_o[3] = {0.5, 0.5, 0.5};
 
     // Euler angles phase (rad)
     double phi_o[3] = {0.0, 0.0, 0.0};

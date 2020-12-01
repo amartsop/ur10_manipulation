@@ -37,6 +37,10 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
     // Generate joint trajectory
     for (size_t i = 0; i < cartesian_state.size(); i++)
     {
+        // Get end effector link id
+        auto ee_link = m_kinematic_state->getLinkModel(
+            m_joint_model_group->getLinkModelNames().back());
+
         // Geometry message
         geometry_msgs::Pose cart_pose;
 
@@ -45,14 +49,13 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
         cart_pose.position.y = cartesian_state[i].position[1];
         cart_pose.position.z = cartesian_state[i].position[2];
 
-
         // Set orientation
         double phi = cartesian_state[i].euler_position[0];
         double theta = cartesian_state[i].euler_position[1];
         double psi = cartesian_state[i].euler_position[2];
 
-        AngleConversion::Quaternions quatern =
-            AngleConversion::euler_to_quaternions(phi, theta, psi);
+        EulerRotations::Quaternions quatern =
+            EulerRotations::euler_to_quaternions(phi, theta, psi);
 
         cart_pose.orientation.w = quatern.w;
         cart_pose.orientation.x = quatern.x;
@@ -62,7 +65,6 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
         // Joint values in Joint format
         joint_angles[i].time = cartesian_state[i].time;
 
-
         // Solve inerse kinematics
         bool found_ik = m_kinematic_state->setFromIK(m_joint_model_group,
             cart_pose, 10, 0.2);
@@ -70,14 +72,50 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
         // Now, we can print out the IK solution (if found):
         if (found_ik)
         {
-            // Set joint positions
+            /******************* Set joint positions ********************/
             m_kinematic_state->copyJointGroupPositions(m_joint_model_group,
                 joint_angles[i].position);
 
-            // Set joint velocities (CHANGE)
+
+            /******************* Set joint velocities ********************/
+            // Resize velocity vector
             joint_angles[i].velocity.resize(joint_angles[i].position.size());
-            std::fill(joint_angles[i].velocity.begin(),
-                joint_angles[i].velocity.end(), 0.0);
+
+            // Find jacobian
+            Eigen::MatrixXd jac;
+
+            Eigen::Vector3d reference_point_position(0.0, 0.0, 0.0);
+
+            bool found_jac = m_kinematic_state->getJacobian(m_joint_model_group, 
+                ee_link, reference_point_position, jac);
+
+            // Linear velocity (cartesian)
+            Eigen::Vector3d lin_vel(cartesian_state[i].velocity[0],
+                cartesian_state[i].velocity[1], cartesian_state[i].velocity[2]);
+
+            // Derivative of Euler angles
+            Eigen::Vector3d theta_dot(cartesian_state[i].euler_velocity[0],
+                cartesian_state[i].euler_velocity[1],
+                cartesian_state[i].euler_velocity[2]);
+        
+            // Rotational velocity body frame (rad/sec)
+            Eigen::Vector3d omega =
+                EulerRotations::G(cartesian_state[i].euler_position) * theta_dot;
+
+            // Concatenate cartesian state vector
+            Eigen::VectorXd x_dot(lin_vel.size() + omega.size());
+            x_dot << lin_vel, omega;
+
+            // Get desired joint velocity
+            Eigen::VectorXd q_dot = jac.householderQr().solve(x_dot);
+
+            joint_angles[i].velocity.resize(q_dot.size());
+
+            for(size_t j = 0; j < q_dot.size(); j++)
+            {
+            joint_angles[i].velocity.at(j) = q_dot(j);
+            }
+
 
             // Set joint acceleration (CHANGE)
             joint_angles[i].acceleration.resize(joint_angles[i].position.size());
@@ -118,8 +156,8 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
     cart_pose.position.z = cartesian_state.position[2];
 
     // Set orientation
-    AngleConversion::Quaternions quatern =
-        AngleConversion::euler_to_quaternions(cartesian_state.euler_position[0], 
+    EulerRotations::Quaternions quatern =
+        EulerRotations::euler_to_quaternions(cartesian_state.euler_position[0], 
             cartesian_state.euler_position[1], cartesian_state.euler_position[2]);
 
     cart_pose.orientation.w = quatern.w;
@@ -138,14 +176,51 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
     // Now, we can print out the IK solution (if found):
     if (found_ik)
     {
-        // Set joint positions
+        /******************* Set joint positions ********************/
         m_kinematic_state->copyJointGroupPositions(m_joint_model_group,
             joints_values.position);
         
-        // Set joint velocities (CHANGE)
+        /******************* Set joint velocities ********************/
+
+        // Resize velocity vector
         joints_values.velocity.resize(joints_values.position.size());
-        std::fill(joints_values.velocity.begin(),
-            joints_values.velocity.end(), 0.0);
+
+        // Find jacobian
+        Eigen::MatrixXd jac;
+
+        auto ee_link = m_kinematic_state->getLinkModel(
+            m_joint_model_group->getLinkModelNames().back());
+
+        Eigen::Vector3d reference_point_position(0.0, 0.0, 0.0);
+
+        bool found_jac = m_kinematic_state->getJacobian(m_joint_model_group, 
+            ee_link, reference_point_position, jac);
+
+        // Linear velocity (cartesian)
+        Eigen::Vector3d lin_vel(cartesian_state.velocity[0],
+            cartesian_state.velocity[1], cartesian_state.velocity[2]);
+
+        // Derivative of Euler angles
+        Eigen::Vector3d theta_dot(cartesian_state.euler_velocity[0],
+            cartesian_state.euler_velocity[1], cartesian_state.euler_velocity[2]);
+    
+        // Rotational velocity body frame (rad/sec)
+        Eigen::Vector3d omega =
+            EulerRotations::G(cartesian_state.euler_position) * theta_dot;
+
+        // Concatenate cartesian state vector
+        Eigen::VectorXd x_dot(lin_vel.size() + omega.size());
+        x_dot << lin_vel, omega;
+
+        // Get desired joint velocity
+        Eigen::VectorXd q_dot = jac.householderQr().solve(x_dot);
+
+        joints_values.velocity.resize(q_dot.size());
+
+        for(size_t i = 0; i < q_dot.size(); i++)
+        {
+           joints_values.velocity.at(i) = q_dot(i);
+        }
 
         // Set joint acceleration (CHANGE)
         joints_values.acceleration.resize(joints_values.position.size());
@@ -224,8 +299,8 @@ std::vector<double> RobotControl::get_ee_orientation(void)
     Eigen::Quaterniond quatern(rot);
 
     // Quaternions to euler angles
-    AngleConversion::Euler eul =
-        AngleConversion::quaternions_to_euler(quatern.w(), quatern.x(),
+    EulerRotations::Euler eul =
+        EulerRotations::quaternions_to_euler(quatern.w(), quatern.x(),
         quatern.y(), quatern.z());
 
     std::vector<double> eul_vec(3);

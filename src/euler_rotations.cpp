@@ -136,6 +136,28 @@ Eigen::Matrix3d EulerRotations::G_dot(Eigen::Vector3d euler_angles,
 }
 
 
+// Euler angles second derivative to body anglular acceleration mapping
+Eigen::Matrix3d EulerRotations::G_dot(std::vector<double> euler_angles,
+        std::vector<double> euler_angles_dot)
+{
+    double phi = euler_angles[0];
+    double theta = euler_angles[1];
+
+    double phi_dot = euler_angles_dot[0];
+    double theta_dot = euler_angles_dot[1];
+
+    // Matrix initialization
+    Eigen::Matrix3d m;
+
+    m << 0.0, 0.0, - cos(theta) * theta_dot,
+        0.0, - sin(phi) * phi_dot, cos(theta) * cos(phi) * phi_dot - 
+        sin(theta) * sin(phi) * theta_dot,
+        0.0, - cos(phi) * phi_dot, -sin(phi) * cos(theta) * phi_dot - 
+        cos(phi) * sin(theta) * theta_dot;
+
+    return m;
+}
+
 /** Euler angles to quaternions. Euler angles follow the post multiply
     sequence zyx. Rotate "psi" around Z (yaw), "theta" around y (roll)
     and "phi" around x (roll) **/

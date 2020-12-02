@@ -28,19 +28,22 @@ RobotControl::RobotControl(robot_model::RobotModelPtr kinematic_model,
 void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
     cartesian_state, TrajClient& traj_client)
 {
+    // Get end effector link id
+    auto ee_link = m_kinematic_state->getLinkModel(
+        m_joint_model_group->getLinkModelNames().back());
+
     // Valid solution
     bool valid_solution = true;
 
     // Create joint object 
     std::vector<PathID::Joint> joint_angles(cartesian_state.size());
 
+    // Store jacobians for acceleration estimation
+    Eigen::MatrixXd jac_prev;
+
     // Generate joint trajectory
     for (size_t i = 0; i < cartesian_state.size(); i++)
     {
-        // Get end effector link id
-        auto ee_link = m_kinematic_state->getLinkModel(
-            m_joint_model_group->getLinkModelNames().back());
-
         // Geometry message
         geometry_msgs::Pose cart_pose;
 
@@ -57,10 +60,8 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
         EulerRotations::Quaternions quatern =
             EulerRotations::euler_to_quaternions(phi, theta, psi);
 
-        cart_pose.orientation.w = quatern.w;
-        cart_pose.orientation.x = quatern.x;
-        cart_pose.orientation.y = quatern.y;
-        cart_pose.orientation.z = quatern.z;
+        cart_pose.orientation.w = quatern.w; cart_pose.orientation.x = quatern.x;
+        cart_pose.orientation.y = quatern.y; cart_pose.orientation.z = quatern.z;
 
         // Joint values in Joint format
         joint_angles[i].time = cartesian_state[i].time;
@@ -75,7 +76,6 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
             /******************* Set joint positions ********************/
             m_kinematic_state->copyJointGroupPositions(m_joint_model_group,
                 joint_angles[i].position);
-
 
             /******************* Set joint velocities ********************/
             // Resize velocity vector
@@ -102,7 +102,7 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
             Eigen::Vector3d omega =
                 EulerRotations::G(cartesian_state[i].euler_position) * theta_dot;
 
-            // Concatenate cartesian state vector
+            // Concatenate cartesian state velocity vector
             Eigen::VectorXd x_dot(lin_vel.size() + omega.size());
             x_dot << lin_vel, omega;
 
@@ -116,19 +116,66 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
             joint_angles[i].velocity.at(j) = q_dot(j);
             }
 
-
-            // Set joint acceleration (CHANGE)
+            /******************* Set joint acceleration ********************/
+            // Resize acceleration vector
             joint_angles[i].acceleration.resize(joint_angles[i].position.size());
-            std::fill(joint_angles[i].acceleration.begin(),
-                joint_angles[i].acceleration.end(), 0.0);
 
-            std::cout << i << " out of: " << joint_angles.size() << std::endl;
+            // Linear acceleration (cartesian)
+            Eigen::Vector3d lin_accel(cartesian_state[i].acceleration[0],
+                cartesian_state[i].acceleration[1], cartesian_state[i].acceleration[2]);
+
+            // Second derivative of Euler angles
+            Eigen::Vector3d theta_ddot(cartesian_state[i].euler_acceleration[0],
+                cartesian_state[i].euler_acceleration[1],
+                cartesian_state[i].euler_acceleration[2]);
+
+            // Rotational acceleration body frame (rad/sec^2)
+            Eigen::Vector3d omega_dot =
+                EulerRotations::G(cartesian_state[i].euler_position) * theta_ddot 
+                + EulerRotations::G_dot(cartesian_state[i].euler_position, 
+                cartesian_state[i].euler_velocity) * theta_dot;
+
+            // Concatenate cartesian state acceleration vector
+            Eigen::VectorXd x_ddot(lin_accel.size() + omega_dot.size());
+            x_ddot << lin_accel, omega_dot;
+
+            // Calculate time derivative of jacobian matrix
+            Eigen::MatrixXd jac_der;
+            if (i == 0 || i == cartesian_state.size() - 1 )
+            {
+                jac_der.setZero(jac.cols(), jac.rows());
+            }
+            else
+            {
+                // Calculate time difference
+                double h = joint_angles[i].time - joint_angles[i-1].time;
+
+                // Estimate jacobian derivative (forward euler)
+                jac_der = (jac - jac_prev) / h;
+            }
+
+            // Update jacobian 
+            jac_prev = jac;
+
+            // Calculate b (Spong p. 141)
+            Eigen::VectorXd b = x_ddot - jac_der * q_dot;
+
+            // Calculate desired joint acceleration
+            Eigen::VectorXd q_ddot = jac.householderQr().solve(b);
+
+            for(size_t j = 0; j < q_dot.size(); j++)
+            {
+            joint_angles[i].acceleration.at(j) = q_ddot(j);
+            }
         }
         else
         {
             valid_solution = false;
             break;
         }
+
+        // Print current state
+        ROS_INFO("%d out of: %d", i, cartesian_state.size());
     }
 
     if(valid_solution)
@@ -143,10 +190,15 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
 }
 
 
-// Go to cartesian position
+
+// Go to cartesian position (one point)
 void RobotControl::goto_cartesian_position(const PathID::Cartesian&
     cartesian_state, TrajClient& traj_client)
 {
+    // Get end effector link id
+    auto ee_link = m_kinematic_state->getLinkModel(
+        m_joint_model_group->getLinkModelNames().back());
+
     // Geometry message
     geometry_msgs::Pose cart_pose;
 
@@ -173,6 +225,7 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
     bool found_ik = m_kinematic_state->setFromIK(m_joint_model_group,
         cart_pose, 0.2);
 
+
     // Now, we can print out the IK solution (if found):
     if (found_ik)
     {
@@ -181,15 +234,11 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
             joints_values.position);
         
         /******************* Set joint velocities ********************/
-
         // Resize velocity vector
         joints_values.velocity.resize(joints_values.position.size());
 
         // Find jacobian
         Eigen::MatrixXd jac;
-
-        auto ee_link = m_kinematic_state->getLinkModel(
-            m_joint_model_group->getLinkModelNames().back());
 
         Eigen::Vector3d reference_point_position(0.0, 0.0, 0.0);
 
@@ -222,7 +271,7 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
            joints_values.velocity.at(i) = q_dot(i);
         }
 
-        // Set joint acceleration (CHANGE)
+        /******************* Set joint accelerations ********************/
         joints_values.acceleration.resize(joints_values.position.size());
         std::fill(joints_values.acceleration.begin(),
             joints_values.acceleration.end(), 0.0);

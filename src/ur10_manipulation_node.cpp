@@ -49,6 +49,8 @@ int main(int argc, char** argv)
     robot_control.goto_cartesian_position(cart_path, traj_client);
 
 
+    ROS_INFO("End of mission!");
+
     ros::shutdown();
     return 0;
 }

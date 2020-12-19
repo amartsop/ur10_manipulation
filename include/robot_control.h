@@ -72,8 +72,11 @@ class RobotControl
 
     private:
         // Initialize robot 
-        const std::vector<double> m_init_pos = {0.0, -1.7279, -1.7279,
-            0.0, 1.57, 0.0};
+        // const std::vector<double> m_init_pos = {0.0, -1.7279, -1.7279,
+        //     0.0, 1.57, 0.0};
+        const std::vector<double> m_init_pos = {0.0, -2.618, -1.5708,
+            -2.0944, -1.5708, 0.0};
+
         std::vector<double> m_init_vel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         std::vector<double> m_init_accel = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         double m_t_init = 3.0;

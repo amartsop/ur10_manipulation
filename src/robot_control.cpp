@@ -175,7 +175,7 @@ void RobotControl::goto_cartesian_position(const std::vector<PathID::Cartesian>&
         }
 
         // Print current state
-        ROS_INFO("%d out of: %d", i, cartesian_state.size());
+        ROS_INFO("%d out of: %d", (unsigned int) i, (unsigned int) cartesian_state.size());
     }
 
     if(valid_solution)

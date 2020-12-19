@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/thanos/catkin_ws/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/thanos/catkin_ws/src/location_monitor/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_2f_gripper_action_server/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_2f_gripper_control/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_3f_gripper_articulated_gazebo_plugins/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_3f_gripper_control/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_ethercat/include/**",
+        "/home/thanos/catkin_ws/src/robotiq/robotiq_ft_sensor/include/**",
+        "/home/thanos/catkin_ws/src/ur10_manipulation/include/**",
+        "/home/thanos/catkin_ws/src/universal_robot/ur_kinematics/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ]
+}

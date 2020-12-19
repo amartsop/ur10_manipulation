@@ -1,0 +1,13 @@
+<launch>
+
+    <!-- <include file="$(find ur_bringup)/launch/ur10_bringup_joint_limited.launch">
+    <arg name="robot_ip" value="192.168.1.189" />
+    </include> -->
+
+    <include file="$(find ur_gazebo)/launch/ur10_joint_limited.launch" />
+
+    <include file="$(find ur10_moveit_config)/launch/ur10_moveit_planning_execution.launch" />
+
+    <node pkg="robotiq_ft_sensor" type="rq_sensor" name="ft_sensor_node" />
+
+</launch>

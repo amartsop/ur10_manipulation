@@ -16,7 +16,7 @@ std::vector<PathID::Cartesian> PathPlanning::generate_trajectory(const
 
     // /******************* Position *******************/
     // Position amplitude (m)
-    double a_p[3] = {0.0, 0.0, 0.2};
+    double a_p[3] = {0.2, 0.0, 0.0};
 
     // Position frequency (Hz)
     double f_p[3] = {0.5, 0.5, 0.5};

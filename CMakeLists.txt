@@ -4,12 +4,12 @@ project(ur10_manipulation)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   roscpp rospy std_msgs actionlib moveit_ros_planning_interface
-  moveit_msgs)
+  robotiq_ft_sensor moveit_msgs)
 
 catkin_package(
  CATKIN_DEPENDS roscpp rospy std_msgs actionlib 
   moveit_ros_planning_interface
-  moveit_msgs)
+  robotiq_ft_sensor moveit_msgs)
 
 # Eigen linking
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -20,7 +20,8 @@ set(PROJ_SOURCE_FILES
   src/euler_rotations.cpp
   src/robot_control.cpp
   src/path_planning.cpp
-  src/path_id.cpp)
+  src/path_id.cpp
+  src/ft_sensor.cpp)
 
 # Directories variable
 set(PROJ_INCL_DIRS include include/ur10_manipulation

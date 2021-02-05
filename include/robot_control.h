@@ -34,7 +34,6 @@ class RobotControl
         void goto_cartesian_position(const std::vector<PathID::Cartesian>&
             cartesian_state, TrajClient& traj_client);
 
-
     public:
         // Go to joint position (one point)
         void goto_joint_position(const PathID::Joint& joint_state,

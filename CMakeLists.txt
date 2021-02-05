@@ -21,7 +21,8 @@ set(PROJ_SOURCE_FILES
   src/robot_control.cpp
   src/path_planning.cpp
   src/path_id.cpp
-  src/ft_sensor.cpp)
+  src/ft_sensor.cpp
+  src/camera_control.cpp)
 
 # Directories variable
 set(PROJ_INCL_DIRS include include/ur10_manipulation

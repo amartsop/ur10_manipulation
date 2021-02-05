@@ -286,7 +286,6 @@ void RobotControl::goto_cartesian_position(const PathID::Cartesian&
 }
 
 
-
 // Go to joint position (one point)
 void RobotControl::goto_joint_position(const PathID::Joint& joint_state,
     TrajClient& traj_client)
@@ -296,11 +295,6 @@ void RobotControl::goto_joint_position(const PathID::Joint& joint_state,
 
     // Send goal to client
     traj_client.sendGoal(goal);
-
-    while (!traj_client.getState().isDone())
-    {
-        ros::spinOnce();
-    }
 }
 
 
@@ -313,11 +307,6 @@ void RobotControl::goto_joint_position(const std::vector<PathID::Joint>&
 
     // Send goal to client
     traj_client.sendGoal(goal);
-
-    while (!traj_client.getState().isDone())
-    {
-        ros::spinOnce();
-    }
 }
 
 
